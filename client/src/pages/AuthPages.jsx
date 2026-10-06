@@ -73,14 +73,17 @@ export function RegisterPage({ onNavigate }) {
 
 function AuthLayout({ page, title, subtitle, children, onNavigate }) {
   const checklist = ["Secure account access", "Organized farm records", "Report status updates"];
-  return <main className="min-h-screen bg-slate-100 px-4 py-4 text-slate-800 sm:p-6">
+  return <main className="relative min-h-screen overflow-hidden bg-[radial-gradient(ellipse_at_12%_10%,rgba(167,243,208,.5),transparent_34rem),radial-gradient(ellipse_at_92%_88%,rgba(190,242,100,.25),transparent_30rem),linear-gradient(135deg,#edf5ef_0%,#f7f7f1_48%,#e5f1e8_100%)] px-4 py-4 text-slate-800 sm:p-6">
+    <div aria-hidden="true" className="pointer-events-none absolute -left-28 top-1/3 h-72 w-72 rounded-full border border-emerald-700/10" />
+    <div aria-hidden="true" className="pointer-events-none absolute -right-24 top-12 h-80 w-80 rounded-full border border-lime-700/10" />
     <div className="mx-auto flex w-full max-w-5xl items-center justify-between pb-4">
       <button onClick={() => onNavigate("#home")} className="text-left leading-tight"><span className="block text-lg font-extrabold tracking-tight text-emerald-950">AgriSystem <span className="text-emerald-600">MAO</span></span><span className="mt-0.5 block text-[10px] font-bold uppercase tracking-[.14em] text-slate-500">Municipal Agriculture Office</span></button>
       <button onClick={() => onNavigate("#home")} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition hover:border-emerald-300 hover:text-emerald-800">Back to home</button>
     </div>
-    <section className="mx-auto grid w-full max-w-5xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-300/40 lg:grid-cols-[.8fr_1.2fr]">
-      <aside className="relative hidden overflow-hidden bg-emerald-950 p-7 text-white lg:block">
-        <div className="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-lime-300/10 blur-2xl" /><div className="absolute -bottom-24 -left-20 h-64 w-64 rounded-full bg-teal-300/10 blur-2xl" />
+    <section className="relative mx-auto grid w-full max-w-5xl overflow-hidden rounded-xl border border-white/80 bg-white/95 shadow-2xl shadow-emerald-950/10 backdrop-blur-sm lg:grid-cols-[.8fr_1.2fr]">
+      <aside className="relative hidden overflow-hidden bg-gradient-to-br from-emerald-950 via-emerald-900 to-teal-800 p-7 text-white lg:block">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_18%,rgba(190,242,100,.22),transparent_15rem),radial-gradient(circle_at_10%_90%,rgba(45,212,191,.17),transparent_17rem)]" />
+        <div className="absolute -right-20 -top-20 h-56 w-56 rounded-full border border-lime-200/15" /><div className="absolute -bottom-24 -left-20 h-64 w-64 rounded-full border border-teal-200/15" />
         <div className="relative"><p className="text-xs font-bold uppercase tracking-[.18em] text-lime-300">MAO digital services</p><h2 className="mt-4 text-3xl font-extrabold leading-tight">Farm support made easier to follow.</h2><p className="mt-4 max-w-md text-sm leading-6 text-emerald-100">A dedicated portal for farmers and authorized MAO Staff to keep farm information, reports, and service updates connected.</p>
           <div className="mt-7 space-y-3 border-t border-white/15 pt-5">{checklist.map((item, index) => <div key={item} className="flex items-center gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-lime-300 text-xs font-extrabold text-emerald-950">{index + 1}</span><span className="text-sm font-semibold text-emerald-50">{item}</span></div>)}</div>
           <p className="mt-7 border-t border-white/15 pt-4 text-xs leading-5 text-emerald-100/85">Your details are used for farm records, report validation, and service communication from the Municipal Agriculture Office.</p>

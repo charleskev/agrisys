@@ -35,6 +35,7 @@ export default function CameraDetector({ onCapture, token }) {
   const [analysisNotice, setAnalysisNotice] = useState("");
   const [photoFacts, setPhotoFacts] = useState(null);
   useEffect(() => () => stop(), []);
+  useEffect(() => () => { if (photo) URL.revokeObjectURL(photo); }, [photo]);
 
   function stop() {
     cancelAnimationFrame(animationRef.current);
@@ -53,6 +54,7 @@ export default function CameraDetector({ onCapture, token }) {
   }
   async function start() {
     setError(""); setObjects([]); setAnalysis(null); setAnalysisNotice("");
+    if (!window.isSecureContext) { setError("Camera access only works on HTTPS or localhost. Open the app on localhost, or use an HTTPS address on your phone."); return; }
     if (!navigator.mediaDevices?.getUserMedia) { setError(message()); return; }
     setOpen(true);
     try {
@@ -116,12 +118,16 @@ export default function CameraDetector({ onCapture, token }) {
       const file = new File([blob], `crop-scan-${Date.now()}.jpg`, { type: "image/jpeg" });
       setPhoto(URL.createObjectURL(blob));
       setPhotoFacts({ width: video.videoWidth, height: video.videoHeight });
+      stop();
+      // Attach evidence immediately. AI may take longer or be unavailable, but
+      // a valid captured photo must never be lost from the farmer's report.
+      onCapture(file, objects, null);
       analyzePhoto(file, objects);
     }, "image/jpeg", 0.92);
   }
-  function retake() { setPhoto(""); setPhotoFacts(null); setAnalysis(null); setAnalysisNotice(""); setError(""); if (!open) start(); }
+  function retake() { setPhoto(""); setPhotoFacts(null); setAnalysis(null); setAnalysisNotice(""); setError(""); start(); }
   const cropLabels = analysis?.detectedItems?.filter(item => ["fruit", "vegetable", "field crop", "tree crop"].includes(item.category)) || [];
-  return <section className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4 sm:col-span-2">
+  return <section className="rounded-lg border border-emerald-100 bg-emerald-50 p-4 sm:col-span-2">
     <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-sm font-extrabold text-emerald-950">Crop identification camera</p><p className="mt-1 max-w-xl text-xs leading-5 text-emerald-800">Capture a close, well-lit photo of the fruit, vegetable, leaf, or whole plant. The detailed scan identifies Philippine crops, crop category, visible condition, and report guidance. It will return Unknown instead of guessing.</p></div><button type="button" onClick={open ? stop : start} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white">{open ? "Stop camera" : "Open back camera"}</button></div>
     <div className="mt-3 grid gap-2 text-xs text-emerald-900 sm:grid-cols-3"><p className="rounded-lg bg-white/70 p-2"><b>1. Subject:</b> one crop or plant</p><p className="rounded-lg bg-white/70 p-2"><b>2. Distance:</b> 30–80 cm, no blur</p><p className="rounded-lg bg-white/70 p-2"><b>3. Damage:</b> include affected leaf/fruit</p></div>
     {error && <p className="mt-3 rounded-lg bg-red-50 p-2 text-xs text-red-700">{error}</p>}
@@ -133,7 +139,14 @@ export default function CameraDetector({ onCapture, token }) {
   </section>;
 }
 
-function CropAnalysisCard({ analysis, cropLabels }) { return <div className="mt-3 rounded-xl border border-sky-200 bg-white p-4 text-xs"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-extrabold text-emerald-950">Captured-photo crop analysis</p><p className="mt-1 text-slate-500">AI advisory only — MAO Staff verifies the final report.</p></div><span className="rounded-full bg-sky-100 px-2.5 py-1 font-extrabold text-sky-800">{Math.round((analysis.confidence || 0) * 100)}% visual confidence</span></div>{analysis.qualityCheck === "needs_clearer_photo" && <p className="mt-3 rounded-lg bg-amber-50 p-2 font-semibold text-amber-900">The crop is not clear enough to name safely. Retake a close, well-lit photo.</p>}<div className="mt-3 grid gap-3 sm:grid-cols-2"><ScanFact label="Identified crop / item" value={analysis.cropOrPlant || "Unknown"}/><ScanFact label="Type" value={analysis.category || "Unknown"}/><ScanFact label="Visible part" value={analysis.plantPartVisible || "Unknown"}/><ScanFact label="Growth stage" value={analysis.growthStage || "Unknown"}/><ScanFact label="Visual condition" value={analysis.healthStatus || "Not assessable"}/><ScanFact label="Possible damage" value={analysis.possibleDamageType || "Unknown"}/></div>{cropLabels.length > 0 && <div className="mt-3"><p className="font-bold text-slate-700">Crop / produce found in photo</p><div className="mt-2 flex flex-wrap gap-2">{cropLabels.map((item, index) => <span key={`${item.label}-${index}`} className="rounded-full bg-lime-100 px-2.5 py-1 font-bold text-lime-900">{item.label} · {Math.round((item.confidence || 0) * 100)}%</span>)}</div></div>}{analysis.visibleSymptoms?.length > 0 && <p className="mt-3 text-slate-700"><b>Visible symptoms:</b> {analysis.visibleSymptoms.join(", ")}</p>}<p className="mt-3 rounded-lg bg-emerald-50 p-3 leading-5 text-emerald-950"><b>Report suggestion:</b> {analysis.reportSuggestion}<br/><b>Recommended next step:</b> {analysis.reportRecommendation}</p>{analysis.evidenceToCapture?.length > 0 && <p className="mt-3 text-slate-600"><b>For a better report, also capture:</b> {analysis.evidenceToCapture.join(", ")}</p>}</div>; }
+function CropAnalysisCard({ analysis, cropLabels }) { return <div className="mt-3 rounded-xl border border-sky-200 bg-white p-4 text-xs"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-extrabold text-emerald-950">Captured-photo crop analysis</p><p className="mt-1 text-slate-500">AI advisory only — MAO Staff verifies the final report.</p></div><span className="rounded-full bg-sky-100 px-2.5 py-1 font-extrabold text-sky-800">{Math.round((analysis.confidence || 0) * 100)}% visual confidence</span></div>{analysis.qualityCheck === "needs_clearer_photo" && <p className="mt-3 rounded-lg bg-amber-50 p-2 font-semibold text-amber-900">The crop is not clear enough to name safely. Retake a close, well-lit photo.</p>}<div className="mt-3 grid gap-3 sm:grid-cols-2"><ScanFact label="Identified crop / item" value={analysis.cropOrPlant || "Unknown"}/><ScanFact label="Type" value={analysis.category || "Unknown"}/><ScanFact label="Visible part" value={analysis.plantPartVisible || "Unknown"}/><ScanFact label="Growth stage" value={analysis.growthStage || "Unknown"}/><ScanFact label="Visual condition" value={analysis.healthStatus || "Not assessable"}/><ScanFact label="Possible damage" value={analysis.possibleDamageType || "Unknown"}/></div>{cropLabels.length > 0 && <div className="mt-3"><p className="font-bold text-slate-700">Crop / produce found in photo</p><div className="mt-2 flex flex-wrap gap-2">{cropLabels.map((item, index) => <span key={`${item.label}-${index}`} className="rounded-full bg-lime-100 px-2.5 py-1 font-bold text-lime-900">{item.label} · {Math.round((item.confidence || 0) * 100)}%</span>)}</div></div>}{analysis.visibleSymptoms?.length > 0 && <p className="mt-3 text-slate-700"><b>Visible symptoms:</b> {analysis.visibleSymptoms.join(", ")}</p>}<p className="mt-3 rounded-lg bg-emerald-50 p-3 leading-5 text-emerald-950"><b>Report suggestion:</b> {analysis.reportSuggestion}<br/><b>Recommended next step:</b> {analysis.reportRecommendation}</p><FullVisionReport report={analysis.formattedReport}/>{analysis.evidenceToCapture?.length > 0 && <p className="mt-3 text-slate-600"><b>For a better report, also capture:</b> {analysis.evidenceToCapture.join(", ")}</p>}</div>; }
+function FullVisionReport({ report }) {
+  if (!report) return null;
+  return <details className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+    <summary className="cursor-pointer font-bold text-slate-800">Open full agricultural vision report</summary>
+    <pre className="mt-3 whitespace-pre-wrap font-sans text-xs leading-5 text-slate-700">{report}</pre>
+  </details>;
+}
 function ScanFact({ label, value }) { return <div className="rounded-lg bg-slate-50 p-2.5"><p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{label}</p><p className="mt-1 font-bold capitalize text-slate-800">{value}</p></div>; }
 
 function LegacyCameraDetector({ onCapture, token }) {
@@ -228,7 +241,7 @@ function LegacyCameraDetector({ onCapture, token }) {
     }, "image/jpeg", .9);
   }
 
-  return <section className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4 sm:col-span-2">
+  return <section className="rounded-lg border border-emerald-100 bg-emerald-50 p-4 sm:col-span-2">
     <div className="flex flex-wrap items-start justify-between gap-3"><div><b className="text-sm text-emerald-950">Farm camera</b><p className="mt-1 max-w-xl text-xs leading-5 text-emerald-800">Live scan recognizes general scene types. Capture a clear photo for detailed AI identification of fruits, vegetables, crops, trees, tools, equipment, and visible damage.</p></div><button type="button" onClick={open ? stop : start} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white">{open ? "Stop camera" : "Open camera"}</button></div>
     {error && <p className="mt-3 text-xs text-red-700">{error}</p>}
     {open && <><div className="relative mt-4 overflow-hidden rounded-xl bg-black"><video ref={videoRef} muted playsInline className="aspect-video w-full object-cover"/><canvas ref={canvasRef} className="pointer-events-none absolute inset-0 h-full w-full"/></div><div className="mt-3 flex flex-wrap items-center justify-between gap-3"><p className="text-xs text-emerald-800">{objects.length ? `Live scan: ${objects.map(item => `${item.label} (${item.category})`).join(", ")}` : "Scanning scene objects..."}</p><button type="button" onClick={capture} className="rounded-lg bg-lime-300 px-3 py-2 text-xs font-bold text-emerald-950">Capture & analyze</button></div></>}
